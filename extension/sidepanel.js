@@ -1953,6 +1953,35 @@ function downloadIcs(icsContent, title) {
 // ============================================================
 // Direct Vault Commands (no AI required)
 // ============================================================
+function formatTraceCard(trace, showDate = true) {
+  const lines = trace.content.split("\n");
+  let title = "";
+  let url = "";
+  let excerpt = "";
+
+  // Parse saved format: title\nURL\n\nexcerpt
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!title && trimmed) { title = trimmed; continue; }
+    if (title && !url && trimmed.startsWith("http")) { url = trimmed; continue; }
+    if (title && url && trimmed) { excerpt = trimmed; break; }
+  }
+
+  // Fallback: if no URL found, use content as excerpt
+  if (!url && !excerpt) {
+    excerpt = trace.content.length > 200 ? trace.content.slice(0, 200) + "..." : trace.content;
+    title = "";
+  }
+
+  const date = showDate ? ` (${new Date(trace.created_at).toLocaleDateString()})` : "";
+  const tags = trace.tags ? ` \`${trace.tags}\`` : "";
+  const titleLine = title ? `**${title}**` : "";
+  const urlLine = url ? `[${url}](${url})` : "";
+  const excerptLine = excerpt ? (excerpt.length > 200 ? excerpt.slice(0, 200) + "..." : excerpt) : "";
+
+  return `**#${trace.id}**${date}${tags}\n${titleLine}\n${urlLine}\n${excerptLine}\n`;
+}
+
 async function slashSearch(query) {
   appendMessage("user", `/search ${query}`);
   try {
@@ -1965,9 +1994,7 @@ async function slashSearch(query) {
     }
     let md = `**Found ${data.results.length} result${data.results.length > 1 ? "s" : ""} for "${query}":**\n\n`;
     for (const r of data.results) {
-      const preview = r.content.length > 150 ? r.content.slice(0, 150) + "..." : r.content;
-      const tags = r.tags ? ` \`${r.tags}\`` : "";
-      md += `**#${r.id}**${tags} — ${preview}\n\n`;
+      md += formatTraceCard(r, false) + "\n";
     }
     appendMessage("assistant", md);
   } catch (err) {
@@ -1987,10 +2014,7 @@ async function slashList() {
     }
     let md = `**${data.total} trace${data.total > 1 ? "s" : ""} in your vault** (showing ${data.traces.length}):\n\n`;
     for (const t of data.traces) {
-      const preview = t.content.length > 120 ? t.content.slice(0, 120) + "..." : t.content;
-      const date = new Date(t.created_at).toLocaleDateString();
-      const tags = t.tags ? ` \`${t.tags}\`` : "";
-      md += `**#${t.id}** (${date})${tags} — ${preview}\n\n`;
+      md += formatTraceCard(t) + "\n";
     }
     appendMessage("assistant", md);
   } catch (err) {
