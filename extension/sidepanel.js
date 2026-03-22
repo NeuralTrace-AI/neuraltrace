@@ -1957,29 +1957,24 @@ function formatTraceCard(trace, showDate = true) {
   const lines = trace.content.split("\n");
   let title = "";
   let url = "";
-  let excerpt = "";
 
   // Parse saved format: title\nURL\n\nexcerpt
   for (const line of lines) {
     const trimmed = line.trim();
     if (!title && trimmed) { title = trimmed; continue; }
-    if (title && !url && trimmed.startsWith("http")) { url = trimmed; continue; }
-    if (title && url && trimmed) { excerpt = trimmed; break; }
+    if (title && !url && trimmed.startsWith("http")) { url = trimmed; break; }
   }
 
-  // Fallback: if no URL found, use content as excerpt
-  if (!url && !excerpt) {
-    excerpt = trace.content.length > 200 ? trace.content.slice(0, 200) + "..." : trace.content;
-    title = "";
+  // Fallback: no structured format, use raw content
+  if (!title) {
+    title = trace.content.length > 100 ? trace.content.slice(0, 100) + "..." : trace.content;
   }
 
-  const date = showDate ? ` (${new Date(trace.created_at).toLocaleDateString()})` : "";
-  const tags = trace.tags ? ` \`${trace.tags}\`` : "";
-  const titleLine = title ? `**${title}**` : "";
-  const urlLine = url ? `[${url}](${url})` : "";
-  const excerptLine = excerpt ? (excerpt.length > 200 ? excerpt.slice(0, 200) + "..." : excerpt) : "";
+  const date = showDate ? new Date(trace.created_at).toLocaleDateString() : "";
+  const source = url ? `[View source](${url})` : "";
+  const meta = [date, source].filter(Boolean).join(" · ");
 
-  return `**#${trace.id}**${date}${tags}\n${titleLine}\n${urlLine}\n${excerptLine}\n`;
+  return `**#${trace.id}** ${title}\n${meta}\n`;
 }
 
 async function slashSearch(query) {
