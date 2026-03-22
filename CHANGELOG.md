@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ---
 
+## [1.0.1] — 2026-03-22
+
+### Fixed
+- **Slash commands work without OpenRouter** — `/search`, `/list`, `/delete` now call the server API directly instead of routing through AI chat. Self-hosted users no longer need a paid AI key for vault operations.
+
+---
+
 ## [1.0.0] — 2026-03-22
 
 Initial open-source release.

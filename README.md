@@ -30,6 +30,11 @@ NeuralTrace is an open-source browser memory layer for AI agents. Save pages, no
 - **Local-First** — Your data stays on your machine. SQLite vault, no cloud required.
 - **Self-Hosted** — Run the full stack on your own hardware with Docker.
 
+## Prerequisites
+
+- **Node.js 18+** (LTS recommended — [download](https://nodejs.org/)). Older versions will fail to compile `better-sqlite3`.
+- **Docker** (optional, for containerized deployment)
+
 ## Quick Start
 
 ### Option 1: Docker (recommended)
@@ -38,7 +43,7 @@ NeuralTrace is an open-source browser memory layer for AI agents. Save pages, no
 git clone https://github.com/NeuralTrace-AI/neuraltrace.git
 cd neuraltrace
 cp .env.example .env
-# Edit .env — add your OPENAI_API_KEY at minimum
+# Edit .env — set OPENAI_API_KEY and ADMIN_PASSWORD
 docker compose up -d
 ```
 
@@ -51,7 +56,7 @@ git clone https://github.com/NeuralTrace-AI/neuraltrace.git
 cd neuraltrace
 npm install
 cp .env.example .env
-# Edit .env — add your OPENAI_API_KEY at minimum
+# Edit .env — set OPENAI_API_KEY and ADMIN_PASSWORD
 npm run build
 npm start
 ```
@@ -62,6 +67,9 @@ npm start
 2. Enable **Developer mode** (top right)
 3. Click **Load unpacked** and select the `extension/` folder
 4. Click the NeuralTrace icon to open the side panel
+5. Click **"Use settings"** (self-hosted)
+6. In the **Auth Token** field, enter the `ADMIN_PASSWORD` you set in `.env`
+7. Start chatting — use `/save-page` to save any page, `/search` to find memories
 
 ## Connect Your AI Tools
 
@@ -92,7 +100,6 @@ Use `http://localhost:3000/mcp` as the server URL. NeuralTrace supports OAuth 2.
 | `add_trace` | Save a memory (content + tags) to your vault |
 | `search_neuraltrace_memory` | Semantic search across your vault |
 | `delete_trace` | Remove a memory by ID |
-| `suggest_traces` | AI suggests what to save from the current conversation |
 
 ## Architecture
 
@@ -116,8 +123,8 @@ See [`.env.example`](.env.example) for all available options. Key settings:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `OPENAI_API_KEY` | Yes | For generating semantic embeddings |
-| `ADMIN_PASSWORD` | Yes | Protects your vault in self-hosted mode |
+| `OPENAI_API_KEY` | Yes | For generating semantic search embeddings ([get key](https://platform.openai.com/api-keys)) |
+| `ADMIN_PASSWORD` | Yes | Protects your vault — also used as Auth Token in the Chrome extension |
 | `PORT` | No | Server port (default: 3000) |
 | `NEURALTRACE_MODE` | No | `selfhosted` (default) or `cloud` |
 
