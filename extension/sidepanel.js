@@ -1983,12 +1983,14 @@ async function slashSearch(query) {
     const res = await authedFetch(`${CONFIG.apiBase}/api/search?q=${encodeURIComponent(query)}&limit=10`);
     if (!res.ok) throw new Error(`Server returned ${res.status}`);
     const data = await res.json();
-    if (!data.results || data.results.length === 0) {
+    // Filter out low-relevance results (score < 0.15)
+    const relevant = (data.results || []).filter(r => r.score >= 0.15);
+    if (relevant.length === 0) {
       appendMessage("assistant", `No results found for "${query}".`);
       return;
     }
-    let md = `**Found ${data.results.length} result${data.results.length > 1 ? "s" : ""} for "${query}":**\n\n`;
-    for (const r of data.results) {
+    let md = `**Found ${relevant.length} result${relevant.length > 1 ? "s" : ""} for "${query}":**\n\n`;
+    for (const r of relevant) {
       md += formatTraceCard(r, false) + "\n";
     }
     appendMessage("assistant", md);
