@@ -1,0 +1,16 @@
+services:
+  neuraltrace:
+    build: .
+    container_name: neuraltrace
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - neuraltrace-data:/app/data
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+
+volumes:
+  neuraltrace-data:

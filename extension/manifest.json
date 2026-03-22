@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "NeuralTrace",
+  "version": "0.1.0",
+  "description": "Your AI should never forget who you are. Memory-first chat powered by your vault.",
+  "permissions": [
+    "sidePanel",
+    "contextMenus",
+    "activeTab",
+    "tabs",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "NeuralTrace"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+N",
+        "mac": "MacCtrl+Shift+N"
+      },
+      "description": "Open NeuralTrace side panel"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["vendor/Readability.js", "vendor/Readability-readerable.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

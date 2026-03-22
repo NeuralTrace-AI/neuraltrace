@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+#
+# trace - Save a memory to NeuralTrace from any terminal
+#
+# Usage:
+#   trace "content here"
+#   trace "content here" --tags "tag1,tag2"
+#
+# Env vars:
+#   NEURALTRACE_KEY  (required) — matches ADMIN_PASSWORD on server
+#   NEURALTRACE_URL  (optional) — defaults to http://localhost:3000
+
+set -euo pipefail
+
+NEURALTRACE_URL="${NEURALTRACE_URL:-http://localhost:3000}"
+NEURALTRACE_KEY="${NEURALTRACE_KEY:-}"
+
+if [ -z "$NEURALTRACE_KEY" ]; then
+  echo "Error: NEURALTRACE_KEY is not set." >&2
+  echo "Export it in your shell profile: export NEURALTRACE_KEY=\"your-admin-password\"" >&2
+  exit 1
+fi
+
+CONTENT=""
+TAGS=""
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --tags)
+      TAGS="$2"
+      shift 2
+      ;;
+    *)
+      if [ -z "$CONTENT" ]; then
+        CONTENT="$1"
+      else
+        echo "Error: Unexpected argument '$1'" >&2
+        echo "Usage: trace \"content\" [--tags \"tag1,tag2\"]" >&2
+        exit 1
+      fi
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$CONTENT" ]; then
+  echo "Usage: trace \"content\" [--tags \"tag1,tag2\"]" >&2
+  exit 1
+fi
+
+# Build JSON payload using printf for proper escaping
+if [ -n "$TAGS" ]; then
+  BODY=$(printf '{"content":"%s","tags":"%s"}' \
+    "$(echo "$CONTENT" | sed 's/\\/\\\\/g; s/"/\\"/g')" \
+    "$(echo "$TAGS" | sed 's/\\/\\\\/g; s/"/\\"/g')")
+else
+  BODY=$(printf '{"content":"%s"}' \
+    "$(echo "$CONTENT" | sed 's/\\/\\\\/g; s/"/\\"/g')")
+fi
+
+RESPONSE=$(curl -s -w "\n%{http_code}" \
+  -X POST "${NEURALTRACE_URL}/api/trace" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${NEURALTRACE_KEY}" \
+  -d "$BODY")
+
+HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+BODY_RESPONSE=$(echo "$RESPONSE" | sed '$d')
+
+if [ "$HTTP_CODE" = "201" ]; then
+  echo "Trace saved. $BODY_RESPONSE"
+else
+  echo "Error ($HTTP_CODE): $BODY_RESPONSE" >&2
+  exit 1
+fi

@@ -1,0 +1,42 @@
+{
+  "name": "neuraltrace-ai",
+  "version": "1.0.0",
+  "description": "NeuralTrace MVP - A remote MCP memory server",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "trace": "./bin/trace"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "dev": "tsc && node build/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "memory",
+    "sse"
+  ],
+  "author": "Abel Alvarado",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@paddle/paddle-node-sdk": "^3.6.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "better-sqlite3": "^12.6.2",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.3.1",
+    "express": "^4.22.1",
+    "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^8.0.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.3.3",
+    "@types/nodemailer": "^7.0.11",
+    "typescript": "^5.9.3"
+  }
+}

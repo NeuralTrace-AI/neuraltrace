@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — NeuralTrace</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #0a0a0f;
+      color: #d1d1d6;
+      line-height: 1.7;
+      padding: 40px 24px;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .logo {
+      font-size: 28px;
+      font-weight: 700;
+      color: #6c63ff;
+      margin-bottom: 4px;
+    }
+    .tagline {
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 40px;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #f5f5f5;
+      margin-bottom: 8px;
+    }
+    .effective {
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+    h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #f5f5f5;
+      margin-top: 32px;
+      margin-bottom: 12px;
+    }
+    p, li {
+      font-size: 15px;
+      color: #d1d1d6;
+      margin-bottom: 12px;
+    }
+    ul {
+      padding-left: 24px;
+      margin-bottom: 12px;
+    }
+    li { margin-bottom: 6px; }
+    a { color: #6c63ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid #21262d;
+      color: #888;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">NeuralTrace</div>
+    <div class="tagline">Your AI should never forget who you are.</div>
+
+    <h1>Privacy Policy</h1>
+    <p class="effective">Effective date: March 20, 2026</p>
+
+    <p>NeuralTrace AI, LLC ("we", "our", "us") operates the NeuralTrace Chrome extension and web service at neuraltrace.ai. This policy explains what data we collect, how we use it, and your rights.</p>
+
+    <h2>1. What We Collect</h2>
+    <ul>
+      <li><strong>Account information:</strong> Email address (used for authentication via magic link sign-in).</li>
+      <li><strong>Memory vault data:</strong> Text content you explicitly save ("traces"), including tags and metadata you create or that are auto-generated from saved content.</li>
+      <li><strong>Page content:</strong> When you use "Save this page" or "About this page", the extension reads the title, URL, and visible text of the active browser tab. This data is only captured when you initiate the action.</li>
+      <li><strong>Chat messages:</strong> Messages you send in the side panel are processed by third-party AI models to generate responses. Chat history is stored locally in your browser.</li>
+      <li><strong>Images:</strong> Screenshots or images you paste into chat are sent to a third-party AI model for analysis. Images are not stored on our servers.</li>
+      <li><strong>Voice input:</strong> Speech is processed by your browser's built-in Web Speech API. Audio is not sent to our servers.</li>
+      <li><strong>Usage data:</strong> We track trace count and search count per user for enforcing free-tier limits. We do not track browsing history, pages visited, or any activity outside of explicit NeuralTrace interactions.</li>
+    </ul>
+
+    <h2>2. How We Use Your Data</h2>
+    <ul>
+      <li>To provide the NeuralTrace service: storing and retrieving your memory vault, powering AI chat, and processing vault operations.</li>
+      <li>To authenticate your account and manage your subscription.</li>
+      <li>To enforce usage limits on free-tier accounts.</li>
+      <li>To improve the service (aggregate, anonymized usage patterns only).</li>
+    </ul>
+
+    <h2>3. Third-Party Services</h2>
+    <p>We use the following third-party services to operate NeuralTrace:</p>
+    <ul>
+      <li><strong>OpenRouter (openrouter.ai):</strong> Routes AI chat requests to language models (DeepSeek, Google Gemini). Your chat messages and pasted images are sent to OpenRouter for processing. <a href="https://openrouter.ai/privacy">OpenRouter Privacy Policy</a>.</li>
+      <li><strong>OpenAI:</strong> Generates text embeddings for semantic search of your vault. Only your saved trace content is sent. <a href="https://openai.com/privacy">OpenAI Privacy Policy</a>.</li>
+      <li><strong>Paddle (paddle.com):</strong> Handles payment processing for Pro subscriptions. We do not store your payment details. <a href="https://www.paddle.com/legal/privacy">Paddle Privacy Policy</a>.</li>
+      <li><strong>Resend (resend.com):</strong> Sends magic link authentication emails. Only your email address is shared. <a href="https://resend.com/legal/privacy-policy">Resend Privacy Policy</a>.</li>
+    </ul>
+
+    <h2>4. Data Storage and Security</h2>
+    <ul>
+      <li>Your vault data is stored in a per-user encrypted database on our servers.</li>
+      <li>Chat history is stored locally in your browser's extension storage, not on our servers.</li>
+      <li>All communication between the extension and our servers uses HTTPS encryption.</li>
+      <li>We do not sell, rent, or share your personal data with third parties for marketing purposes.</li>
+    </ul>
+
+    <h2>5. Data Retention</h2>
+    <ul>
+      <li>Your vault data is retained as long as your account is active.</li>
+      <li>You can delete individual traces at any time using the extension.</li>
+      <li>If you delete your account, all associated vault data is permanently removed.</li>
+      <li>Chat history stored in your browser can be cleared at any time via Chrome's extension storage settings.</li>
+    </ul>
+
+    <h2>6. Your Rights</h2>
+    <ul>
+      <li><strong>Access:</strong> You can view all your stored data through the extension's vault.</li>
+      <li><strong>Deletion:</strong> You can delete individual traces or request full account deletion.</li>
+      <li><strong>Portability:</strong> You can export your vault data at any time.</li>
+      <li><strong>Opt-out:</strong> You can uninstall the extension at any time to stop all data collection.</li>
+    </ul>
+
+    <h2>7. Permissions Explained</h2>
+    <p>The NeuralTrace Chrome extension requests the following permissions:</p>
+    <ul>
+      <li><strong>sidePanel:</strong> Opens the NeuralTrace chat interface as a browser side panel.</li>
+      <li><strong>activeTab:</strong> Reads the current page's title, URL, and text when you explicitly request it (e.g., "Save this page" or "About this page").</li>
+      <li><strong>storage:</strong> Stores your settings, authentication token, and chat history locally in your browser.</li>
+      <li><strong>contextMenus:</strong> Adds "Remember this with NeuralTrace" to the right-click menu.</li>
+      <li><strong>tabs:</strong> Opens the upgrade page and detects tab changes for page context features.</li>
+      <li><strong>scripting:</strong> Extracts page content when you request a page save or summary.</li>
+    </ul>
+
+    <h2>8. Children's Privacy</h2>
+    <p>NeuralTrace is not intended for use by children under 13. We do not knowingly collect data from children under 13.</p>
+
+    <h2>9. Changes to This Policy</h2>
+    <p>We may update this policy from time to time. Changes will be posted on this page with an updated effective date. Continued use of the service after changes constitutes acceptance.</p>
+
+    <h2>10. Contact</h2>
+    <p>If you have questions about this privacy policy or your data, contact us at:</p>
+    <p><a href="mailto:hello@neuraltrace.ai">hello@neuraltrace.ai</a></p>
+
+    <div class="footer">
+      &copy; 2026 NeuralTrace AI, LLC. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

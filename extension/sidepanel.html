@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuralTrace</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Sign-In Screen (shown when not authenticated) -->
+    <div id="auth-screen" class="hidden">
+      <div class="auth-container">
+        <div class="auth-logo">
+          <img src="icons/logo.png" alt="NeuralTrace" class="auth-logo-img">
+        </div>
+        <p class="auth-tagline">Your AI should never forget who you are.</p>
+
+        <div id="auth-form">
+          <input type="email" id="auth-email" placeholder="Enter your email" autocomplete="email">
+          <button id="btn-auth-send" class="btn-primary">Get Started</button>
+          <p class="auth-helper-text">We'll send you a magic link. Check your inbox for a sign-in link.</p>
+        </div>
+
+        <div id="auth-pending" class="hidden">
+          <div class="auth-spinner"></div>
+          <p class="auth-pending-text">Check your email for a sign-in link</p>
+          <p class="auth-pending-sub" id="auth-pending-email"></p>
+          <button id="btn-auth-cancel" class="btn-secondary">Cancel</button>
+          <button id="btn-auth-retry" class="btn-primary">Try again</button>
+        </div>
+
+        <div id="auth-error" class="hidden">
+          <p class="auth-error-text" id="auth-error-msg"></p>
+          <button id="btn-auth-retry-err" class="btn-primary">Try again</button>
+        </div>
+
+        <p class="auth-selfhosted-hint">Self-hosted? <button id="btn-auth-selfhosted" class="link-btn">Use settings</button></p>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <header id="header">
+      <div class="header-left">
+        <button id="btn-guide" title="Quick guide">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="8" cy="8" r="6.5"/>
+            <path d="M6 6a2 2 0 114 0c0 1-1.5 1.25-1.5 2.5M8 11.5v.01"/>
+          </svg>
+        </button>
+        <span class="plan-badge hidden" id="plan-badge">FREE</span>
+        <div class="model-dropdown hidden" id="model-dropdown">
+          <button id="btn-model-select" class="model-dropdown-btn">
+            <span id="model-dropdown-label">AI</span>
+            <span class="model-chevron">&#9662;</span>
+          </button>
+          <div id="model-dropdown-panel" class="model-dropdown-panel hidden">
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <button id="btn-history" title="Chat history">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="8" cy="8" r="6.5"/>
+            <path d="M8 4.5V8l2.5 2.5"/>
+          </svg>
+        </button>
+        <button id="btn-new-chat" title="New conversation">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M14 1a1 1 0 011 1v12a1 1 0 01-1 1H2a1 1 0 01-1-1V2a1 1 0 011-1h12zM2 0a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V2a2 2 0 00-2-2H2z"/>
+            <path d="M4 8h8M8 4v8" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          </svg>
+        </button>
+        <button id="btn-settings" title="Settings">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <circle cx="8" cy="3" r="1.5"/>
+            <circle cx="8" cy="8" r="1.5"/>
+            <circle cx="8" cy="13" r="1.5"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Settings Panel (hidden by default) -->
+    <div id="settings-panel" class="hidden">
+      <!-- Account section (cloud mode) -->
+      <div id="settings-account" class="settings-group">
+        <label>Account</label>
+        <div class="settings-account-info">
+          <span id="settings-email" class="settings-email"></span>
+          <span id="settings-plan" class="settings-plan-badge">free</span>
+        </div>
+        <button id="btn-upgrade-pro" class="btn-primary btn-small">Upgrade to Pro</button>
+        <button id="btn-sign-out" class="btn-secondary btn-small">Sign Out</button>
+      </div>
+
+      <!-- Advanced toggle -->
+      <button id="btn-toggle-advanced" class="settings-advanced-toggle">
+        Advanced <span id="advanced-chevron" class="toggle-chevron">&#9656;</span>
+      </button>
+
+      <!-- Advanced section (collapsed by default) -->
+      <div id="settings-advanced" class="hidden">
+        <!-- API Key section -->
+        <div id="settings-apikey-section" class="settings-group">
+          <label>MCP API Key</label>
+          <p class="settings-hint">Connect Claude, ChatGPT, or other AI tools to your vault.</p>
+          <button id="btn-generate-key" class="btn-secondary btn-small">Generate API Key</button>
+          <div id="api-key-result" class="hidden">
+            <code id="api-key-value" class="api-key-display"></code>
+            <button id="btn-copy-key" class="btn-small">Copy</button>
+            <p class="settings-hint api-key-warning">Save this key — it won't be shown again.</p>
+          </div>
+        </div>
+
+        <hr class="settings-divider">
+
+        <div class="settings-group">
+          <label for="input-apikey">AI API Key</label>
+          <input type="password" id="input-apikey" placeholder="sk-or-v1-...">
+          <span id="settings-byok-indicator" class="settings-hint"></span>
+        </div>
+        <div class="settings-group">
+          <label for="input-server">Server URL</label>
+          <input type="text" id="input-server" placeholder="http://localhost:3000">
+        </div>
+        <!-- Self-hosted auth token (shown only for self-hosted mode) -->
+        <div id="settings-token-group" class="settings-group hidden">
+          <label for="input-token">Auth Token (self-hosted)</label>
+          <input type="password" id="input-token" placeholder="Bearer token">
+        </div>
+        <button id="btn-save-settings" class="btn-primary">Save</button>
+      </div>
+    </div>
+
+    <!-- Chat History Overlay -->
+    <div id="history-overlay" class="hidden">
+      <div class="history-header">
+        <h2>Chat History</h2>
+        <button id="btn-close-history">&times;</button>
+      </div>
+      <div id="history-list"></div>
+      <button id="btn-history-new" class="btn-primary">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="margin-right:6px">
+          <path d="M4 8h8M8 4v8" stroke="currentColor" stroke-width="2" fill="none"/>
+        </svg>
+        New Conversation
+      </button>
+    </div>
+
+    <!-- Quick Guide Overlay -->
+    <div id="guide-overlay" class="hidden">
+      <div class="guide-title">QUICK GUIDE</div>
+      <div class="guide-list">
+        <div class="guide-section">ENGINES &amp; SAVING</div>
+
+        <div class="guide-item">
+          <div class="guide-label">Search your vault</div>
+          <div class="guide-hint">What do I know about X?</div>
+        </div>
+        <div class="guide-item">
+          <div class="guide-label">Save something</div>
+          <div class="guide-hint">Remember this or Save this</div>
+        </div>
+        <div class="guide-item guide-row">
+          <div class="guide-label">Save selected text</div>
+          <div class="guide-shortcut">Select text &#8594; right-click &#8594; Remember</div>
+        </div>
+        <div class="guide-item guide-row">
+          <div class="guide-label">Save entire page</div>
+          <div class="guide-shortcut">Right-click &#8594; Save Page</div>
+        </div>
+
+        <div class="guide-section">INPUTS &amp; ACTIONS</div>
+
+        <div class="guide-item guide-row">
+          <div class="guide-label">Paste an image</div>
+          <div class="guide-shortcut">Cmd+V</div>
+        </div>
+        <div class="guide-item guide-row">
+          <div class="guide-label">Voice input</div>
+          <div class="guide-shortcut">Cmd+Shift+M</div>
+        </div>
+        <div class="guide-item">
+          <div class="guide-label">Ask about this page</div>
+          <div class="guide-hint">What's on this page?</div>
+        </div>
+        <div class="guide-item">
+          <div class="guide-label">Delete a trace</div>
+          <div class="guide-hint">Delete trace #15</div>
+        </div>
+
+        <div class="guide-section">NAVIGATION</div>
+
+        <div class="guide-item guide-row">
+          <div class="guide-label">Open side panel</div>
+          <div class="guide-shortcut">Alt+Shift+N</div>
+        </div>
+        <div class="guide-item guide-row">
+          <div class="guide-label">Chat history</div>
+          <div class="guide-shortcut">Clock icon in header</div>
+        </div>
+        <div class="guide-item guide-row">
+          <div class="guide-label">New conversation</div>
+          <div class="guide-shortcut">Plus icon in header</div>
+        </div>
+      </div>
+      <div class="guide-dismiss">Tap anywhere to dismiss</div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <!-- Chat Messages -->
+    <div id="messages">
+      <div class="welcome">
+        <div class="welcome-icon">
+          <img src="icons/logo.png" alt="NeuralTrace" class="welcome-logo">
+        </div>
+        <p class="welcome-title">Your vault's voice</p>
+        <p class="welcome-sub">Ask me anything about what you've saved, or save something new.</p>
+        <div class="quick-actions">
+          <button class="chip" data-prompt="What's in my vault?">What's in my vault?</button>
+          <button class="chip" data-prompt="What do I know about this page?">About this page</button>
+          <button class="chip" data-prompt="Save this page to my vault">Save this page</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Area -->
+    <div id="input-area">
+      <div id="page-context-badge" class="hidden">
+        <span id="page-context-text"></span>
+        <button id="btn-dismiss-context">&times;</button>
+      </div>
+      <div id="image-preview-row" class="hidden"></div>
+      <!-- Slash command menu -->
+      <div id="slash-menu" class="slash-menu hidden">
+        <div class="slash-menu-header">Commands</div>
+        <div id="slash-menu-list" class="slash-menu-list"></div>
+      </div>
+      <span id="status-text"></span>
+      <div class="quick-actions">
+        <button class="quick-action-btn" id="qa-save">Save Page</button>
+        <button class="quick-action-btn" id="qa-summarize">Summarize Page</button>
+        <button class="quick-action-btn" id="qa-recent">Show recent traces</button>
+      </div>
+      <div class="input-row">
+        <div class="input-wrapper">
+          <textarea id="input" rows="1" placeholder="Ask your vault..." autofocus></textarea>
+          <button id="btn-mic" title="Voice input (Cmd+Shift+M)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+          </button>
+        </div>
+        <button id="btn-send" title="Send" disabled>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
+      </div>
+      <span class="model-badge hidden">Qwen 3.5 Flash</span>
+      <!-- Upgrade Prompt Banner (shown on rate limit) -->
+      <div id="upgrade-prompt" class="upgrade-prompt hidden">
+        <button id="btn-upgrade-dismiss" class="upgrade-dismiss" title="Dismiss">&times;</button>
+        <span id="upgrade-message" class="upgrade-message"></span>
+        <span id="upgrade-counts" class="upgrade-counts"></span>
+        <button id="btn-upgrade" class="btn-upgrade">Upgrade to Pro</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Onboarding Overlay -->
+  <div id="onboarding-overlay" class="hidden">
+    <div id="onboarding-backdrop"></div>
+    <div id="onboarding-tooltip" style="display:none">
+      <p id="onboarding-text"></p>
+      <div class="onboarding-footer">
+        <button id="btn-onboarding-skip" class="btn-link btn-small">Skip</button>
+        <span id="onboarding-step"></span>
+        <button id="btn-onboarding-next" class="btn-primary btn-small">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>
