@@ -1951,14 +1951,81 @@ function downloadIcs(icsContent, title) {
 }
 
 // ============================================================
+// Direct Vault Commands (no AI required)
+// ============================================================
+async function slashSearch(query) {
+  appendMessage("user", `/search ${query}`);
+  try {
+    const res = await authedFetch(`${CONFIG.apiBase}/api/search?q=${encodeURIComponent(query)}&limit=10`);
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+    const data = await res.json();
+    if (!data.results || data.results.length === 0) {
+      appendMessage("assistant", `No results found for "${query}".`);
+      return;
+    }
+    let md = `**Found ${data.results.length} result${data.results.length > 1 ? "s" : ""} for "${query}":**\n\n`;
+    for (const r of data.results) {
+      const preview = r.content.length > 150 ? r.content.slice(0, 150) + "..." : r.content;
+      const tags = r.tags ? ` \`${r.tags}\`` : "";
+      md += `**#${r.id}**${tags} — ${preview}\n\n`;
+    }
+    appendMessage("assistant", md);
+  } catch (err) {
+    appendMessage("assistant", `Search failed: ${err.message}`);
+  }
+}
+
+async function slashList() {
+  appendMessage("user", "/list");
+  try {
+    const res = await authedFetch(`${CONFIG.apiBase}/api/traces?limit=10`);
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+    const data = await res.json();
+    if (!data.traces || data.traces.length === 0) {
+      appendMessage("assistant", "Your vault is empty. Save something first!");
+      return;
+    }
+    let md = `**${data.total} trace${data.total > 1 ? "s" : ""} in your vault** (showing ${data.traces.length}):\n\n`;
+    for (const t of data.traces) {
+      const preview = t.content.length > 120 ? t.content.slice(0, 120) + "..." : t.content;
+      const date = new Date(t.created_at).toLocaleDateString();
+      const tags = t.tags ? ` \`${t.tags}\`` : "";
+      md += `**#${t.id}** (${date})${tags} — ${preview}\n\n`;
+    }
+    appendMessage("assistant", md);
+  } catch (err) {
+    appendMessage("assistant", `Failed to list traces: ${err.message}`);
+  }
+}
+
+async function slashDelete(id) {
+  const traceId = parseInt(id, 10);
+  if (isNaN(traceId)) {
+    appendMessage("assistant", "Usage: /delete [id] — provide a numeric trace ID.");
+    return;
+  }
+  appendMessage("user", `/delete ${traceId}`);
+  try {
+    const res = await authedFetch(`${CONFIG.apiBase}/api/trace/${traceId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `Server returned ${res.status}`);
+    }
+    appendMessage("assistant", `Trace #${traceId} deleted.`);
+  } catch (err) {
+    appendMessage("assistant", `Delete failed: ${err.message}`);
+  }
+}
+
+// ============================================================
 // Slash Commands
 // ============================================================
 const SLASH_COMMANDS = [
   { name: "save-page", desc: "Save this page to your vault", action: () => quickSavePage() },
   { name: "summarize-page", desc: "Summarize and review this page", action: () => document.getElementById("qa-summarize").click() },
-  { name: "search", desc: "Search your vault", args: "query", action: (q) => { $input.value = `Search my vault for ${q}`; sendMessage(); } },
-  { name: "list", desc: "Show recent traces in your vault", action: () => { $input.value = "What's in my vault?"; sendMessage(); } },
-  { name: "delete", desc: "Delete a trace by ID", args: "id", action: (id) => { $input.value = `Delete trace #${id}`; sendMessage(); } },
+  { name: "search", desc: "Search your vault", args: "query", action: (q) => slashSearch(q) },
+  { name: "list", desc: "Show recent traces in your vault", action: () => slashList() },
+  { name: "delete", desc: "Delete a trace by ID", args: "id", action: (id) => slashDelete(id) },
   { name: "new", desc: "Start a new conversation", action: () => $btnNewChat.click() },
   { name: "settings", desc: "Open settings panel", action: () => $btnSettings.click() },
   { name: "help", desc: "Open the quick guide", action: () => $btnGuide.click() },
