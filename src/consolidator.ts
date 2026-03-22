@@ -123,7 +123,12 @@ export async function runConsolidation(dryRun = false): Promise<void> {
 }
 
 // --- Consolidation loop ---
-export function startConsolidationLoop(intervalMs: number, dryRun = false): NodeJS.Timeout {
+export function startConsolidationLoop(intervalMs: number, dryRun = false): NodeJS.Timeout | null {
+  if (!OPENROUTER_API_KEY) {
+    console.log("[Consolidator] Skipped — OPENROUTER_API_KEY not set");
+    return null;
+  }
+
   console.log(`[Consolidator] Starting loop: interval=${Math.round(intervalMs / 60000)}min, dryRun=${dryRun}`);
 
   // Run once on startup after a short delay
