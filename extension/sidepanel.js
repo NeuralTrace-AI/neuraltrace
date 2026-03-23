@@ -796,10 +796,13 @@ async function showMainApp() {
     await chrome.storage.local.set({ activeConversationId });
   }
 
-  // Listen for trace-saved events from background
+  // Listen for trace events from background
   chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === "trace-saving") {
+      showNotification(`Saving "${msg.title}"...`, "info");
+    }
     if (msg.type === "trace-saved") {
-      showNotification(`Saved to vault (ID: ${msg.trace.id})`);
+      showNotification(`Saved to vault.`, "success");
       // Background script doesn't enrich — trigger it from here
       if (msg.trace.id && msg.trace.content && (CONFIG.openrouterKey || CONFIG.authToken)) {
         setTimeout(() => enrichTrace(msg.trace.id, msg.trace.content), 500);

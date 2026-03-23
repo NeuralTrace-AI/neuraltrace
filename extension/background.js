@@ -51,6 +51,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 
   if (info.menuItemId === "nt-save-page" && tab) {
+    // Immediate feedback — don't wait for AI summary
+    chrome.runtime.sendMessage({ type: "trace-saving", title: tab.title || "page" }).catch(() => {});
+
     try {
       const [result] = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
