@@ -43,7 +43,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         chrome.runtime.sendMessage({
           type: "trace-saved",
           trace: { id: data.id, content, tags: "web-capture" }
-        });
+        }).catch(() => {});
       }
     } catch (err) {
       console.error("[NeuralTrace] Save failed:", err);
@@ -90,7 +90,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
           chrome.runtime.sendMessage({
             type: "trace-saved",
             trace: { id: (await res.json()).id, content, tags: "page-capture" }
-          });
+          }).catch(() => {});
         }
       }
     } catch (err) {

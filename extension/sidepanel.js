@@ -810,6 +810,11 @@ async function showMainApp() {
     }
   });
 
+  // Clear stale page context when user switches tabs
+  chrome.tabs.onActivated.addListener(() => {
+    currentPageContext = null;
+  });
+
   // Show onboarding for returning users who haven't completed it
   // (For first-time sign-in, onboarding is triggered from completeSignIn instead)
   setTimeout(() => maybeShowOnboarding(), 2000);
@@ -2265,7 +2270,15 @@ async function sendMessage() {
   await streamResponse();
 }
 
-async function streamResponse() {
+const MAX_TOOL_ROUNDS = 5;
+
+async function streamResponse(toolRound = 0) {
+  if (toolRound >= MAX_TOOL_ROUNDS) {
+    appendMessage("assistant", "I've reached the maximum number of tool calls for this turn. Please try again or rephrase your request.");
+    isStreaming = false;
+    setStatus("");
+    return;
+  }
   isStreaming = true;
   setStatus("Thinking...");
 
@@ -2487,7 +2500,7 @@ async function streamResponse() {
 
       // Continue conversation with tool results
       isStreaming = false;
-      await streamResponse();
+      await streamResponse(toolRound + 1);
       return;
     }
 
