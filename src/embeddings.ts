@@ -1,28 +1,82 @@
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const EMBEDDING_MODEL = "text-embedding-3-small";
-const EMBEDDING_DIMENSIONS = 512; // MRL: 512d with <3% quality loss vs 1536d
+import type Database from "better-sqlite3";
+import { getSetting, setSetting } from "./database.js";
 
-export async function getEmbedding(text: string): Promise<number[]> {
-  if (!OPENAI_API_KEY || OPENAI_API_KEY === "your-openai-api-key-here") {
-    throw new Error("OPENAI_API_KEY is not set in .env");
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+interface EmbeddingConfig {
+  providerUrl: string;
+  model: string;
+  apiKey: string;
+  dimensions: number | null;
+}
+
+let embeddingConfig: EmbeddingConfig | null = null;
+
+export function resolveEmbeddingConfig(): void {
+  const providerUrl = process.env.EMBEDDING_PROVIDER_URL;
+  const model = process.env.EMBEDDING_MODEL;
+  const apiKey = process.env.EMBEDDING_API_KEY ?? "";
+  const rawDimensions = process.env.EMBEDDING_DIMENSIONS;
+  const parsedDimensions = rawDimensions ? Number(rawDimensions) : NaN;
+  const dimensions = rawDimensions && !isNaN(parsedDimensions) ? parsedDimensions : null;
+
+  if (providerUrl && model) {
+    embeddingConfig = { providerUrl, model, apiKey, dimensions };
+    console.log(`[embeddings] Provider resolved: explicit config (${providerUrl}, model: ${model})`);
+    return;
   }
 
-  const response = await fetch("https://api.openai.com/v1/embeddings", {
+  if (OPENAI_API_KEY && OPENAI_API_KEY !== "your-openai-api-key-here") {
+    embeddingConfig = {
+      providerUrl: "https://api.openai.com/v1",
+      model: "text-embedding-3-small",
+      apiKey: OPENAI_API_KEY,
+      dimensions: dimensions ?? 512,
+    };
+    console.log("[embeddings] Provider resolved: OpenAI (legacy OPENAI_API_KEY)");
+    return;
+  }
+
+  console.warn("[embeddings] WARNING: No embedding provider configured. Embedding-dependent features will be unavailable.");
+  embeddingConfig = null;
+}
+
+export function hasEmbeddingProvider(): boolean {
+  return embeddingConfig !== null;
+}
+
+export function getEmbeddingModelName(): string | null {
+  return embeddingConfig?.model ?? null;
+}
+
+export async function getEmbedding(text: string): Promise<number[]> {
+  if (!embeddingConfig) {
+    throw new Error("No embedding provider configured. Set EMBEDDING_PROVIDER_URL + EMBEDDING_MODEL or OPENAI_API_KEY.");
+  }
+
+  const { providerUrl, model, apiKey, dimensions } = embeddingConfig;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (apiKey) {
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  }
+
+  const body: Record<string, unknown> = { input: text, model };
+  if (dimensions !== null) {
+    body["dimensions"] = dimensions;
+  }
+
+  const response = await fetch(`${providerUrl}/embeddings`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      input: text,
-      model: EMBEDDING_MODEL,
-      dimensions: EMBEDDING_DIMENSIONS,
-    }),
+    headers,
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`OpenAI API error (${response.status}): ${err}`);
+    throw new Error(`Embedding API error (${response.status}): ${err}`);
   }
 
   const data = (await response.json()) as {
@@ -30,6 +84,59 @@ export async function getEmbedding(text: string): Promise<number[]> {
   };
 
   return data.data[0].embedding;
+}
+
+export async function checkAndMigrateEmbeddings(db: Database.Database): Promise<void> {
+  // No provider configured — nothing to do
+  if (!embeddingConfig) return;
+
+  const storedModel = getSetting("embedding_model", db);
+
+  // Fresh install — no model recorded yet. Store current and return.
+  if (storedModel === null) {
+    setSetting("embedding_model", embeddingConfig.model, db);
+    console.log(`[Embedding] Model recorded: ${embeddingConfig.model}`);
+    return;
+  }
+
+  // Same model — no migration needed
+  if (storedModel === embeddingConfig.model) {
+    console.log(`[Embedding] Model unchanged (${storedModel}). No migration needed.`);
+    return;
+  }
+
+  console.log(`[Embedding] Model changed: ${storedModel} → ${embeddingConfig.model}. Re-embedding all traces...`);
+
+  // Connectivity check before committing to a full migration
+  try {
+    await getEmbedding("test");
+  } catch (err) {
+    console.error(`[Embedding] Connectivity check failed — falling back to keyword-only search.`, err);
+    return;
+  }
+
+  const traces = db.prepare("SELECT id, content FROM traces").all() as Array<{ id: number; content: string }>;
+  let updated = 0;
+  let failed = 0;
+
+  for (let i = 0; i < traces.length; i++) {
+    const trace = traces[i];
+    try {
+      const vector = await getEmbedding(trace.content);
+      db.prepare("UPDATE traces SET vector = ? WHERE id = ?").run(JSON.stringify(vector), trace.id);
+      updated++;
+    } catch (err) {
+      console.warn(`[Embedding] Failed to re-embed trace ${trace.id}, skipping.`, err);
+      failed++;
+    }
+    if ((i + 1) % 50 === 0) {
+      console.log(`[Embedding] Progress: ${i + 1}/${traces.length} traces processed.`);
+    }
+  }
+
+  // Only persist the new model name after ALL traces have been processed (crash safety)
+  setSetting("embedding_model", embeddingConfig.model, db);
+  console.log(`[Embedding] Re-embedding complete. ${updated} updated, ${failed} failed.`);
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {

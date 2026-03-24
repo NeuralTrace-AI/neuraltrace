@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ---
 
+## v1.1.0 — Universal Embedding Provider
+
+- **feat:** Support any OpenAI-compatible embedding provider (Ollama, LocalAI, LM Studio, OpenAI, Jina, Voyage AI, etc.)
+- **feat:** Auto-detect and migrate embeddings when switching providers
+- **feat:** Startup connectivity check before migration
+- **feat:** Backwards compatible — existing OPENAI_API_KEY setups work unchanged
+- **fix:** Health endpoint available during embedding migration
+
+---
+
 ## [1.0.1] — 2026-03-22
 
 ### Fixed

@@ -82,6 +82,13 @@ function initSchema(db: Database.Database): void {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
+  `);
+
   // M001 migration: add consolidation columns (safe to re-run)
   const columns = db.prepare("PRAGMA table_info(traces)").all() as Array<{ name: string }>;
   const columnNames = new Set(columns.map(c => c.name));
@@ -181,6 +188,17 @@ export function updateTraceMetadata(id: number, metadata: string, db?: Database.
   const d = db || getDb();
   const result = d.prepare("UPDATE traces SET metadata = ? WHERE id = ?").run(metadata, id);
   return result.changes > 0;
+}
+
+export function getSetting(key: string, db?: Database.Database): string | null {
+  const d = db || getDb();
+  const row = d.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+export function setSetting(key: string, value: string, db?: Database.Database): void {
+  const d = db || getDb();
+  d.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(key, value);
 }
 
 export function getTraceById(id: number, db?: Database.Database): Trace | null {
@@ -342,6 +360,11 @@ export function initSystemDb(): void {
       expires_at TEXT NOT NULL,
       used INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
     );
   `);
 

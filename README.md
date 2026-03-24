@@ -24,7 +24,7 @@ NeuralTrace is an open-source browser memory layer for AI agents. Save pages, no
 
 - **Chrome Extension** — Side panel AI chat with memory-powered responses. Save pages, summarize content, search your vault — all without leaving the browser.
 - **MCP Server** — Dual transport (SSE + Streamable HTTP) works with Claude, ChatGPT, Cursor, VS Code, and any MCP client.
-- **Semantic Search** — Find memories by meaning, not just keywords. Powered by vector embeddings.
+- **Semantic Search** — Find memories by meaning, not just keywords. Works with Ollama, OpenAI, LocalAI, LM Studio, or any OpenAI-compatible embedding provider.
 - **Quick Save** — One-click page capture. No AI round-trip, sub-second saves.
 - **Background Enrichment** — Saved pages are automatically classified with tags, dates, and locations.
 - **Local-First** — Your data stays on your machine. SQLite vault, no cloud required.
@@ -43,7 +43,7 @@ NeuralTrace is an open-source browser memory layer for AI agents. Save pages, no
 git clone https://github.com/NeuralTrace-AI/neuraltrace.git
 cd neuraltrace
 cp .env.example .env
-# Edit .env — set OPENAI_API_KEY and ADMIN_PASSWORD
+# Edit .env — set ADMIN_PASSWORD (and optionally EMBEDDING_PROVIDER_URL for semantic search)
 docker compose up -d
 ```
 
@@ -56,7 +56,7 @@ git clone https://github.com/NeuralTrace-AI/neuraltrace.git
 cd neuraltrace
 npm install
 cp .env.example .env
-# Edit .env — set OPENAI_API_KEY and ADMIN_PASSWORD
+# Edit .env — set ADMIN_PASSWORD (and optionally EMBEDDING_PROVIDER_URL for semantic search)
 npm run build
 npm start
 ```
@@ -70,6 +70,19 @@ npm start
 5. Click **"Use settings"** (self-hosted)
 6. In the **Auth Token** field, enter the `ADMIN_PASSWORD` you set in `.env`
 7. Start chatting — use `/save-page` to save any page, `/search` to find memories
+
+## Embedding Providers
+
+NeuralTrace supports any OpenAI-compatible embedding endpoint. Configure it in `.env`:
+
+| Provider | URL | API Key | Notes |
+|----------|-----|---------|-------|
+| Ollama (recommended) | `http://localhost:11434/v1` | Not needed | Free, local, private |
+| OpenAI | `https://api.openai.com/v1` | Required | Cloud, paid |
+| LocalAI | `http://localhost:8080/v1` | Not needed | Free, local |
+| LM Studio | `http://localhost:1234/v1` | Not needed | Free, local |
+
+Set `EMBEDDING_PROVIDER_URL` and `EMBEDDING_MODEL` in your `.env`. If neither is set, search falls back to keyword matching. The legacy `OPENAI_API_KEY` variable still works for backwards compatibility — NeuralTrace will auto-configure OpenAI if it's present and `EMBEDDING_PROVIDER_URL` is not set.
 
 ## Connect Your AI Tools
 
@@ -111,7 +124,7 @@ Browser ──► Chrome Extension (side panel chat)
               ├── MCP Transport (SSE + Streamable HTTP)
               ├── REST API (auth, proxy, billing)
               ├── SQLite Vault (per-user)
-              └── OpenAI Embeddings (semantic vectors)
+              └── Embeddings (Ollama, OpenAI, LocalAI, etc.)
                     │
                     ▼
         Claude / ChatGPT / Cursor / any MCP client
@@ -123,8 +136,11 @@ See [`.env.example`](.env.example) for all available options. Key settings:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `OPENAI_API_KEY` | Yes | For generating semantic search embeddings ([get key](https://platform.openai.com/api-keys)) |
 | `ADMIN_PASSWORD` | Yes | Protects your vault — also used as Auth Token in the Chrome extension |
+| `EMBEDDING_PROVIDER_URL` | No | OpenAI-compatible embedding endpoint (e.g. `http://localhost:11434/v1` for Ollama). If omitted, search uses keyword matching only. |
+| `EMBEDDING_MODEL` | No | Embedding model name (e.g. `nomic-embed-text` for Ollama, `text-embedding-3-small` for OpenAI) |
+| `EMBEDDING_API_KEY` | No | API key for the embedding provider. Not needed for Ollama/LocalAI/LM Studio. |
+| `OPENAI_API_KEY` | No | Legacy option — if set and `EMBEDDING_PROVIDER_URL` is not, NeuralTrace auto-configures OpenAI embeddings. |
 | `PORT` | No | Server port (default: 3000) |
 | `NEURALTRACE_MODE` | No | `selfhosted` (default) or `cloud` |
 

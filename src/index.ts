@@ -10,7 +10,7 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import { getDb, resolveDb, getVaultCount, initSystemDb, getSystemUserCount, insertTrace, deleteTrace, searchTraces, getAllTraces, getRecentTraces, getTraceCount, searchTracesFiltered, createUser, findUserByEmail, createApiKey, checkAndIncrementSearch, findUserById, updateTraceMetadata } from "./database.js";
-import { getEmbedding, cosineSimilarity, recencyWeight, keywordScore, extractSuggestedTraces } from "./embeddings.js";
+import { getEmbedding, cosineSimilarity, recencyWeight, keywordScore, extractSuggestedTraces, resolveEmbeddingConfig, hasEmbeddingProvider, getEmbeddingModelName, checkAndMigrateEmbeddings } from "./embeddings.js";
 import { startConsolidationLoop } from "./consolidator.js";
 import { generateMagicToken, sendMagicLink, validateMagicToken, signJwt, verifyJwt, validateApiKey } from "./auth.js";
 import { authMiddleware, traceLimitMiddleware, searchLimitMiddleware, apiKeyLimitMiddleware } from "./middleware.js";
@@ -23,6 +23,10 @@ import { PLAN_LIMITS, UPGRADE_URL } from "./limits.js";
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const IS_CLOUD = process.env.NEURALTRACE_MODE === "cloud";
+// Set at startup via resolveEmbeddingConfig()
+let HAS_EMBEDDING_PROVIDER = false;
+
+// Separate flag for suggest_traces — uses OpenAI chat API, not embeddings
 const HAS_OPENAI_KEY =
   !!process.env.OPENAI_API_KEY &&
   process.env.OPENAI_API_KEY !== "your-openai-api-key-here";
@@ -39,7 +43,7 @@ function registerTools(server: McpServer, db?: import("better-sqlite3").Database
     async ({ content, tags }) => {
       let vector: string | undefined;
 
-      if (HAS_OPENAI_KEY) {
+      if (HAS_EMBEDDING_PROVIDER) {
         try {
           const embedding = await getEmbedding(content);
           vector = JSON.stringify(embedding);
@@ -118,7 +122,7 @@ function registerTools(server: McpServer, db?: import("better-sqlite3").Database
 
       let scored: ScoredTrace[];
 
-      if (HAS_OPENAI_KEY) {
+      if (HAS_EMBEDDING_PROVIDER) {
         try {
           const queryVector = await getEmbedding(query);
 
@@ -708,7 +712,7 @@ app.post("/api/trace", express.json(), traceLimitMiddleware, async (req: Request
   const tagsStr = typeof tags === "string" ? tags : "";
 
   let vector: string | undefined;
-  if (HAS_OPENAI_KEY) {
+  if (HAS_EMBEDDING_PROVIDER) {
     try {
       const embedding = await getEmbedding(content);
       vector = JSON.stringify(embedding);
@@ -820,7 +824,7 @@ app.get("/api/search", searchLimitMiddleware, async (req: Request, res: Response
     ? searchTracesFiltered({ tags: tagsFilter, after, before, limit: 200 }, userDb)
     : getAllTraces(userDb);
 
-  if (HAS_OPENAI_KEY) {
+  if (HAS_EMBEDDING_PROVIDER) {
     try {
       const queryVector = await getEmbedding(query);
 
@@ -1021,20 +1025,50 @@ app.delete("/mcp", async (req: Request, res: Response) => {
 });
 
 // --- Start ---
-getDb();
-console.log("[DB] SQLite database initialized at data/neuraltrace.db");
+(async () => {
+  getDb();
+  console.log("[DB] SQLite database initialized at data/neuraltrace.db");
 
-// Always init system DB — auth needs magic_tokens table in both modes
-initSystemDb();
+  // Always init system DB — auth needs magic_tokens table in both modes
+  initSystemDb();
 
-console.log(`[Config] Mode: ${IS_CLOUD ? "cloud" : "selfhosted"}`);
-console.log(`[Config] Semantic search: ${HAS_OPENAI_KEY ? "ENABLED" : "DISABLED (set OPENAI_API_KEY)"}`);
+  // Resolve embedding provider config
+  resolveEmbeddingConfig();
+  HAS_EMBEDDING_PROVIDER = hasEmbeddingProvider();
 
-app.listen(PORT, () => {
-  console.log(`[NeuralTrace] MCP server running on http://localhost:${PORT}`);
-  console.log(`[NeuralTrace] SSE endpoint: http://localhost:${PORT}/sse`);
-  console.log(`[NeuralTrace] Streamable HTTP endpoint: http://localhost:${PORT}/mcp`);
-  console.log(`[NeuralTrace] Messages endpoint: POST http://localhost:${PORT}/messages`);
+  console.log(`[Config] Mode: ${IS_CLOUD ? "cloud" : "selfhosted"}`);
+  console.log(`[Config] Semantic search: ${HAS_EMBEDDING_PROVIDER ? "ENABLED" : "DISABLED (set EMBEDDING_PROVIDER_URL)"}`);
+
+  // Start HTTP server first (health endpoint available during migration)
+  app.listen(PORT, () => {
+    console.log(`[NeuralTrace] MCP server running on http://localhost:${PORT}`);
+    console.log(`[NeuralTrace] SSE endpoint: http://localhost:${PORT}/sse`);
+    console.log(`[NeuralTrace] Streamable HTTP endpoint: http://localhost:${PORT}/mcp`);
+    console.log(`[NeuralTrace] Messages endpoint: POST http://localhost:${PORT}/messages`);
+  });
+
+  // Run embedding migration after server is listening
+  if (HAS_EMBEDDING_PROVIDER) {
+    await checkAndMigrateEmbeddings(getDb());
+
+    // Cloud mode: also migrate all per-user vaults
+    if (IS_CLOUD) {
+      const fs = await import("node:fs");
+      const path = await import("node:path");
+      const vaultsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "data", "vaults");
+      if (fs.existsSync(vaultsDir)) {
+        const vaultFiles = fs.readdirSync(vaultsDir).filter((f: string) => f.endsWith(".db"));
+        for (const vaultFile of vaultFiles) {
+          const Database = (await import("better-sqlite3")).default;
+          const vaultDb = new Database(path.join(vaultsDir, vaultFile));
+          vaultDb.pragma("journal_mode = WAL");
+          console.log(`[Embedding] Migrating vault: ${vaultFile}`);
+          await checkAndMigrateEmbeddings(vaultDb);
+          vaultDb.close();
+        }
+      }
+    }
+  }
 
   // --- Consolidation loop ---
   const consolidationEnabled = process.env.CONSOLIDATION_ENABLED !== "false";
@@ -1045,4 +1079,4 @@ app.listen(PORT, () => {
   } else {
     console.log("[Consolidator] Disabled via CONSOLIDATION_ENABLED=false");
   }
-});
+})();
