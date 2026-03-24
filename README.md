@@ -67,8 +67,8 @@ npm start
 2. Enable **Developer mode** (top right)
 3. Click **Load unpacked** and select the `extension/` folder
 4. Click the NeuralTrace icon to open the side panel
-5. Click **"Use settings"** (self-hosted)
-6. In the **Auth Token** field, enter the `ADMIN_PASSWORD` you set in `.env`
+5. The extension defaults to **Self-hosted** mode with `http://localhost:3000` — no config needed if your server is running locally
+6. Open settings (gear icon) → enter your `ADMIN_PASSWORD` in the **Auth Token** field
 7. Start chatting — use `/save-page` to save any page, `/search` to find memories
 
 ## Embedding Providers
