@@ -1636,3 +1636,19 @@ body {
 .btn-upgrade:hover {
   background: var(--accent-dim);
 }
+
+/* Mode selector dropdown */
+.settings-select {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e0e0e0;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+}
+.settings-select:focus {
+  border-color: rgba(242, 112, 89, 0.5);
+}

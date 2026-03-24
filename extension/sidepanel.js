@@ -11,7 +11,7 @@ const CONFIG = {
   openrouterBase: "https://openrouter.ai/api/v1",
   userEmail: "",
   userPlan: "",
-  authMode: "cloud", // "cloud" or "selfhosted"
+  authMode: "selfhosted", // "cloud" or "selfhosted"
   serverModel: "", // model assigned by server (plan-based)
   serverLimits: {}, // usage limits from server
   selectedModel: "" // user-selected model override (persisted)
@@ -109,6 +109,7 @@ const $settingsApikeySection = document.getElementById("settings-apikey-section"
 const $btnToggleAdvanced = document.getElementById("btn-toggle-advanced");
 const $settingsAdvanced = document.getElementById("settings-advanced");
 const $advancedChevron = document.getElementById("advanced-chevron");
+const $selectMode = document.getElementById("select-mode");
 
 // ============================================================
 // System Prompt
@@ -693,6 +694,7 @@ async function init() {
   // Auth: use JWT if available, fall back to legacy authToken
   if (stored.jwt) {
     CONFIG.authToken = stored.jwt;
+    CONFIG.authMode = "cloud"; // JWT presence means cloud user — protect after default flip to selfhosted
     CONFIG.userEmail = stored.userEmail || "";
     CONFIG.userPlan = stored.userPlan || "free";
   } else if (stored.authToken) {
@@ -703,6 +705,7 @@ async function init() {
   // Set plan badge from persisted state immediately (prevents flash)
   updatePlanBadge();
   updateModelDropdown();
+  renderModeSelector();
 
   // Populate settings fields
   $inputApiKey.value = CONFIG.openrouterKey;
@@ -729,6 +732,11 @@ async function init() {
 }
 
 async function checkAuth() {
+  // Selfhosted mode: no token required to enter main app
+  // (user configures server + token in settings after landing)
+  if (CONFIG.authMode === "selfhosted" && !CONFIG.authToken) {
+    return true;
+  }
   if (!CONFIG.authToken) return false;
 
   // Quick validation: try to hit the API
@@ -785,6 +793,11 @@ async function showMainApp() {
   // Fetch user status (plan, model) from server if authenticated
   if (CONFIG.authToken && CONFIG.authMode === "cloud") {
     fetchUserStatus();
+  }
+
+  // Selfhosted new install: nudge user to configure server if no token set
+  if (CONFIG.authMode === "selfhosted" && !CONFIG.authToken) {
+    setStatus("Connect your server in Settings", true);
   }
 
   // Restore active conversation or start new
@@ -844,6 +857,12 @@ function updateSettingsAuthUI() {
     // Auto-expand Advanced for self-hosted (they need Server URL + Token)
     $settingsAdvanced.classList.remove("hidden");
     $advancedChevron.classList.add("expanded");
+  }
+}
+
+function renderModeSelector() {
+  if ($selectMode) {
+    $selectMode.value = CONFIG.authMode;
   }
 }
 
@@ -1171,7 +1190,7 @@ function showUpgradePrompt(errorData) {
 }
 
 function initUpgradePrompt() {
-  const UPGRADE_URL = `${CONFIG.apiBase}/upgrade`;
+  const UPGRADE_URL = "https://neuraltrace.ai/upgrade";
   document.getElementById("btn-upgrade").addEventListener("click", () => {
     const url = CONFIG.authToken
       ? `${UPGRADE_URL}?token=${encodeURIComponent(CONFIG.authToken)}`
@@ -1555,6 +1574,10 @@ $btnSettings.addEventListener("click", () => {
     $settingsAdvanced.classList.add("hidden");
     $advancedChevron.classList.remove("expanded");
   }
+  // Sync mode selector to current state when opening settings
+  if (!$settingsPanel.classList.contains("hidden")) {
+    renderModeSelector();
+  }
 });
 
 // Close settings when clicking outside
@@ -1598,6 +1621,27 @@ $btnSaveSettings.addEventListener("click", async () => {
   }
 
   // Update model dropdown after settings change (BYOK key may have changed)
+  updateModelDropdown();
+});
+
+// Mode switcher
+$selectMode.addEventListener("change", async (e) => {
+  const newMode = e.target.value;
+  CONFIG.authMode = newMode;
+  await chrome.storage.local.set({ authMode: newMode });
+
+  if (newMode === "cloud") {
+    CONFIG.apiBase = "https://neuraltrace.ai";
+    $inputServer.value = CONFIG.apiBase;
+    await chrome.storage.local.set({ apiBase: CONFIG.apiBase });
+  } else {
+    CONFIG.apiBase = "http://localhost:3000";
+    $inputServer.value = CONFIG.apiBase;
+    await chrome.storage.local.set({ apiBase: CONFIG.apiBase });
+  }
+
+  updateSettingsAuthUI();
+  updatePlanBadge();
   updateModelDropdown();
 });
 
@@ -1647,7 +1691,7 @@ $btnSignOut.addEventListener("click", async () => {
 
 // Upgrade to Pro button in settings
 document.getElementById("btn-upgrade-pro").addEventListener("click", () => {
-  const UPGRADE_URL = `${CONFIG.apiBase}/upgrade`;
+  const UPGRADE_URL = "https://neuraltrace.ai/upgrade";
   const url = CONFIG.authToken
     ? `${UPGRADE_URL}?token=${encodeURIComponent(CONFIG.authToken)}`
     : UPGRADE_URL;
@@ -1959,7 +2003,7 @@ function downloadIcs(icsContent, title) {
 }
 
 // ============================================================
-// Direct Vault Commands (no AI required)
+// Direct Vault Commands (no AI needed)
 // ============================================================
 function formatTraceCard(trace, showDate = true) {
   const lines = trace.content.split("\n");
