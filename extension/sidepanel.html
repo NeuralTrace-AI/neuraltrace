@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NeuralTrace</title>
   <link rel="stylesheet" href="sidepanel.css">
+  <link rel="stylesheet" href="lib/driver.min.css">
 </head>
 <body>
   <div id="app">
@@ -281,19 +282,40 @@
     </div>
   </div>
 
-  <!-- Onboarding Overlay -->
-  <div id="onboarding-overlay" class="hidden">
-    <div id="onboarding-backdrop"></div>
-    <div id="onboarding-tooltip" style="display:none">
-      <p id="onboarding-text"></p>
-      <div class="onboarding-footer">
-        <button id="btn-onboarding-skip" class="btn-link btn-small">Skip</button>
-        <span id="onboarding-step"></span>
-        <button id="btn-onboarding-next" class="btn-primary btn-small">Next</button>
+  <!-- Onboarding: Phase A — Welcome Overlay -->
+  <div id="onboarding-welcome" class="hidden">
+    <div class="onboarding-welcome-content">
+      <img src="icons/logo.png" alt="NeuralTrace" class="onboarding-logo">
+      <h1 class="onboarding-tagline">Your AI should never forget who you are.</h1>
+      <p class="onboarding-subtitle">Save anything. Search everything. Your vault remembers it all.</p>
+      <button id="btn-see-demo" class="btn-primary onboarding-cta">See it in action</button>
+      <button id="btn-skip-tour" class="btn-link onboarding-skip">Skip tour</button>
+    </div>
+  </div>
+
+  <!-- Onboarding: Phase B — Static Demo Chat -->
+  <div id="onboarding-demo" class="hidden">
+    <div class="onboarding-demo-content">
+      <p class="onboarding-demo-label">Here's how your vault works:</p>
+      <div class="onboarding-demo-messages">
+        <div class="message role-user onboarding-msg-1">
+          <span class="role-label">You</span>
+          <div class="message-text">What do I prefer for design?</div>
+        </div>
+        <div class="tool-call-indicator onboarding-msg-2">
+          <span class="tool-icon">&#128269;</span>
+          <span>Searching vault...</span>
+        </div>
+        <div class="message role-assistant onboarding-msg-3">
+          <span class="role-label">NeuralTrace</span>
+          <div class="message-text">Based on your vault: You prefer dark mode, minimal UI with clean layouts, and good contrast. You also like coral accent colors for interactive elements.</div>
+        </div>
+        <button id="btn-try-real" class="btn-primary onboarding-cta onboarding-msg-4">Now try it for real &rarr;</button>
       </div>
     </div>
   </div>
 
+  <script src="lib/driver.js.iife.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>

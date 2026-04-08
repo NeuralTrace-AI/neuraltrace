@@ -127,16 +127,19 @@ You have these tools:
 - save_trace: Save new content to the vault
 - delete_trace: Delete a trace by ID
 - get_page_context: Get the title, URL, and content of the user's current browser tab
+- web_search: Search the web for current information (news, scores, weather, prices, schedules, recent events). Use when the question needs real-time data. Search silently — present the answer with source links inline, never say "let me search the web".
 
 Behavior rules:
 1. When asked about past decisions, preferences, or saved knowledge — search the vault first
 2. When the user says "save this" or "remember this" — save it to the vault
 3. After saving a trace, ALWAYS confirm with a short message: "Saved to vault." (you may add the trace title or a brief note, but keep it to one line)
 4. When asked "about this page" — use get_page_context, then optionally search vault for related memories
-5. If the vault has no relevant results, just answer the question directly — NEVER say "I didn't find anything in your vault" or mention the vault search. The vault lookup is invisible to the user.
-6. Keep responses concise — this is a side panel, not a full-page chat
-7. Use markdown formatting (bold, lists, code) when helpful
-8. You can answer any question. You are memory-first — always check the vault when relevant — but you are also a capable general assistant. Answer the question, then naturally offer to save if the answer seems worth remembering.
+5. For real-time questions (today's scores, current weather, recent news, live prices) — call web_search. Present results conversationally with source links on their own lines as: "Source: [Title](url)"
+6. Vault-first, web-fallback: always check vault first for personal knowledge. Only use web_search when the question requires data that changes frequently or that the user wouldn't have saved.
+7. If the vault has no relevant results, just answer the question directly — NEVER say "I didn't find anything in your vault" or mention the vault search. The vault lookup is invisible to the user.
+8. Keep responses concise — this is a side panel, not a full-page chat
+9. Use markdown formatting (bold, lists, code) when helpful
+10. You can answer any question. You are memory-first — always check the vault when relevant — but you are also a capable general assistant. Answer the question, then naturally offer to save if the answer seems worth remembering.
 
 Formatting rules for vault results:
 - Present results conversationally, NEVER dump raw trace content
@@ -248,6 +251,20 @@ const TOOLS = [
         required: []
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "web_search",
+      description: "Search the web for current, real-time information. Use when the user asks about live data, current events, today's schedules, recent news, prices, weather, or anything that may have changed recently. Do NOT use for questions about the user's saved memories — use search_vault for that. The search runs silently — present the answer naturally with source links, never say 'let me search the web'.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "The search query" }
+        },
+        required: ["query"]
+      }
+    }
   }
 ];
 
@@ -296,6 +313,7 @@ async function requestMicPermission() {
 
     // Open as a background tab — Chrome shows its native mic prompt there.
     // Once the user clicks Allow, the tab auto-closes.
+    setStatus("A new tab opened — click Allow to enable voice input.");
     chrome.tabs.create({
       url: chrome.runtime.getURL("mic-permission.html"),
       active: false
@@ -828,9 +846,37 @@ async function showMainApp() {
     currentPageContext = null;
   });
 
+  // Track session count and apply progressive disclosure
+  const { sessionCount = 0 } = await chrome.storage.local.get("sessionCount");
+  const newCount = sessionCount + 1;
+  chrome.storage.local.set({ sessionCount: newCount });
+  applyProgressiveDisclosure(newCount);
+
   // Show onboarding for returning users who haven't completed it
   // (For first-time sign-in, onboarding is triggered from completeSignIn instead)
   setTimeout(() => maybeShowOnboarding(), 2000);
+}
+
+// Apply progressive UI disclosure based on session count
+async function applyProgressiveDisclosure(sessionCount) {
+  const $btnHistory = document.getElementById("btn-history");
+  const $btnMic = document.getElementById("btn-mic");
+
+  // Session 0 (first open): keep history and mic hidden — onboarding overlay covers UI anyway
+  // Session 1+: reveal history button
+  if (sessionCount >= 1) {
+    $btnHistory?.classList.remove("hidden");
+  } else {
+    $btnHistory?.classList.add("hidden");
+  }
+
+  // Session 3+: reveal mic button
+  if (sessionCount >= 3) {
+    $btnMic?.classList.remove("hidden");
+  } else {
+    $btnMic?.classList.add("hidden");
+  }
+
 }
 
 function updateSettingsAuthUI() {
@@ -1205,7 +1251,7 @@ function initUpgradePrompt() {
 }
 
 function isRateLimitCode(code) {
-  return code === "trace_limit" || code === "search_limit" || code === "api_key_limit";
+  return code === "trace_limit" || code === "search_limit" || code === "api_key_limit" || code === "web_search_limit";
 }
 
 // ─── Plan Upgrade Polling ───
@@ -1329,16 +1375,7 @@ async function authedFetch(url, options = {}) {
   return res;
 }
 
-// ─── Onboarding ───
-
-const ONBOARDING_STEPS = [
-  { target: "#input", text: "Ask your vault anything, search memories, get answers, or just chat.", position: "above" },
-  { target: "#btn-mic", text: "Use voice input to save or search hands-free.", position: "above" },
-  { target: "#btn-settings", text: "Manage your account, generate API keys for MCP connections.", position: "below" },
-  { target: "#btn-guide", text: "Need help? Tap here for a quick guide to everything you can do.", position: "below" }
-];
-
-let onboardingStep = 0;
+// ─── Onboarding — 3-phase state machine ───
 
 async function maybeShowOnboarding() {
   const { onboardingComplete } = await chrome.storage.local.get("onboardingComplete");
@@ -1357,97 +1394,94 @@ async function maybeShowOnboarding() {
     return;
   }
 
-  startOnboarding();
+  // Phase A: Show welcome overlay
+  document.getElementById("onboarding-welcome").classList.remove("hidden");
+  console.log("[Onboarding] Phase A: Welcome overlay shown");
 }
 
-function startOnboarding() {
-  onboardingStep = 0;
-  showOnboardingStep();
-}
-
-function showOnboardingStep() {
-  const $overlay = document.getElementById("onboarding-overlay");
-  const $text = document.getElementById("onboarding-text");
-  const $step = document.getElementById("onboarding-step");
-  const $tooltip = document.getElementById("onboarding-tooltip");
-
-  // Completion check FIRST — always allow cleanup
-  if (onboardingStep >= ONBOARDING_STEPS.length) {
-    // Done
-    $overlay.classList.add("hidden");
-    $tooltip.style.display = "none";
-    document.querySelectorAll(".onboarding-highlight").forEach(el => el.classList.remove("onboarding-highlight"));
-    chrome.storage.local.set({ onboardingComplete: true });
-    console.log("[Onboarding] Complete");
-    return;
-  }
-
-  // Bail if auth screen reappeared during tour
-  if (!$authScreen.classList.contains("hidden")) {
-    $overlay.classList.add("hidden");
-    $tooltip.style.display = "none";
-    document.querySelectorAll(".onboarding-highlight").forEach(el => el.classList.remove("onboarding-highlight"));
-    console.log("[Onboarding] Aborted — auth screen visible");
-    return;
-  }
-
-  const step = ONBOARDING_STEPS[onboardingStep];
-  const targetEl = document.querySelector(step.target);
-
-  // Remove previous highlight
-  document.querySelectorAll(".onboarding-highlight").forEach(el => el.classList.remove("onboarding-highlight"));
-
-  if (targetEl) {
-    targetEl.classList.add("onboarding-highlight");
-    const rect = targetEl.getBoundingClientRect();
-
-    // Position tooltip
-    if (step.position === "above") {
-      $tooltip.style.bottom = (window.innerHeight - rect.top + 12) + "px";
-      $tooltip.style.top = "auto";
-      $tooltip.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 280)) + "px";
-    } else {
-      $tooltip.style.top = (rect.bottom + 12) + "px";
-      $tooltip.style.bottom = "auto";
-      $tooltip.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 280)) + "px";
-    }
-  }
-
-  $text.textContent = step.text;
-  $step.textContent = ""; // step counter removed — Skip + Next is enough
-  $tooltip.style.display = "";
-  $overlay.classList.remove("hidden");
-
-  // Update button text for last step
-  const $btn = document.getElementById("btn-onboarding-next");
-  $btn.textContent = onboardingStep === ONBOARDING_STEPS.length - 1 ? "Got it!" : "Next";
-}
-
-document.getElementById("btn-onboarding-next")?.addEventListener("click", () => {
-  onboardingStep++;
-  console.log(`[Onboarding] Next clicked, now step ${onboardingStep} of ${ONBOARDING_STEPS.length}`);
-  showOnboardingStep();
-});
-
-// Skip tour entirely
-document.getElementById("btn-onboarding-skip")?.addEventListener("click", () => {
-  dismissOnboarding();
-});
-
-// Clicking the backdrop also dismisses
-document.getElementById("onboarding-backdrop")?.addEventListener("click", () => {
-  dismissOnboarding();
-});
-
-function dismissOnboarding() {
-  const $overlay = document.getElementById("onboarding-overlay");
-  const $tooltip = document.getElementById("onboarding-tooltip");
-  $overlay.classList.add("hidden");
-  $tooltip.style.display = "none";
-  document.querySelectorAll(".onboarding-highlight").forEach(el => el.classList.remove("onboarding-highlight"));
+function completeOnboarding() {
   chrome.storage.local.set({ onboardingComplete: true });
-  console.log("[Onboarding] Skipped by user");
+  document.getElementById("onboarding-welcome").classList.add("hidden");
+  document.getElementById("onboarding-demo").classList.add("hidden");
+  console.log("[Onboarding] Complete");
 }
+
+function startDriverTour() {
+  // Phase C: Driver.js tooltip tour
+  document.getElementById("onboarding-demo").classList.add("hidden");
+
+  try {
+    const { driver } = window.driver.js;
+    const driverObj = driver({
+      showProgress: true,
+      progressText: "{{current}} of {{total}}",
+      allowClose: true,
+      overlayOpacity: 0.4,
+      doneBtnText: "Got it!",
+      popoverClass: "nt-driver-popover",
+      onDestroyed: () => {
+        completeOnboarding();
+        // Pre-fill input as a prompt for user's first real search
+        const $inp = document.getElementById("input");
+        if ($inp) {
+          $inp.value = "What's in my vault?";
+          $inp.dispatchEvent(new Event("input"));
+          $inp.focus();
+        }
+      },
+      steps: [
+        {
+          element: "#qa-save",
+          popover: {
+            title: "Save this page",
+            description: "One click saves anything you're reading to your vault.",
+            side: "top",
+            align: "start"
+          }
+        },
+        {
+          element: "#input",
+          popover: {
+            title: "Search your vault",
+            description: "Ask anything. Your vault is searched automatically.",
+            side: "top",
+            align: "start"
+          }
+        },
+        {
+          popover: {
+            title: "Right-click to save",
+            description: "Select text on any page, right-click, and choose 'Remember this with NeuralTrace'."
+          }
+        }
+      ]
+    });
+
+    driverObj.drive();
+    console.log("[Onboarding] Phase C: Driver.js tour started");
+  } catch (err) {
+    console.error("[Onboarding] Driver.js tour failed:", err);
+    completeOnboarding();
+  }
+}
+
+// Phase A → Phase B: "See it in action"
+document.getElementById("btn-see-demo")?.addEventListener("click", () => {
+  document.getElementById("onboarding-welcome").classList.add("hidden");
+  document.getElementById("onboarding-demo").classList.remove("hidden");
+  console.log("[Onboarding] Phase B: Static demo shown");
+});
+
+// Phase A skip: "Skip tour"
+document.getElementById("btn-skip-tour")?.addEventListener("click", () => {
+  completeOnboarding();
+  console.log("[Onboarding] Skipped by user");
+});
+
+// Phase B → Phase C: "Now try it for real"
+document.getElementById("btn-try-real")?.addEventListener("click", () => {
+  startDriverTour();
+});
 
 // ============================================================
 // Event Listeners
@@ -2030,6 +2064,7 @@ function formatTraceCard(trace, showDate = true) {
 }
 
 async function slashSearch(query) {
+  chatHistory.push({ role: "user", content: `/search ${query}` });
   appendMessage("user", `/search ${query}`);
   try {
     const res = await authedFetch(`${CONFIG.apiBase}/api/search?q=${encodeURIComponent(query)}&limit=10`);
@@ -2038,37 +2073,52 @@ async function slashSearch(query) {
     // Filter out low-relevance results (score < 0.15)
     const relevant = (data.results || []).filter(r => r.score >= 0.15);
     if (relevant.length === 0) {
-      appendMessage("assistant", `No results found for "${query}".`);
+      const msg = `No results found for "${query}".`;
+      chatHistory.push({ role: "assistant", content: msg });
+      appendMessage("assistant", msg);
+      saveConversation();
       return;
     }
     let md = `**Found ${relevant.length} result${relevant.length > 1 ? "s" : ""} for "${query}":**\n\n`;
     for (const r of relevant) {
       md += formatTraceCard(r, false) + "\n";
     }
+    chatHistory.push({ role: "assistant", content: md });
     appendMessage("assistant", md);
   } catch (err) {
-    appendMessage("assistant", `Search failed: ${err.message}`);
+    const msg = `Search failed: ${err.message}`;
+    chatHistory.push({ role: "assistant", content: msg });
+    appendMessage("assistant", msg);
   }
+  saveConversation();
 }
 
 async function slashList() {
+  chatHistory.push({ role: "user", content: "/list" });
   appendMessage("user", "/list");
   try {
     const res = await authedFetch(`${CONFIG.apiBase}/api/traces?limit=10`);
     if (!res.ok) throw new Error(`Server returned ${res.status}`);
     const data = await res.json();
     if (!data.traces || data.traces.length === 0) {
-      appendMessage("assistant", "Your vault is empty. Save something first!");
+      const msg = "Your vault is empty. Save something first!";
+      chatHistory.push({ role: "assistant", content: msg });
+      appendMessage("assistant", msg);
+      saveConversation();
       return;
     }
     let md = `**${data.total} trace${data.total > 1 ? "s" : ""} in your vault** (showing ${data.traces.length}):\n\n`;
     for (const t of data.traces) {
       md += formatTraceCard(t) + "\n";
     }
+    chatHistory.push({ role: "assistant", content: md });
     appendMessage("assistant", md);
   } catch (err) {
-    appendMessage("assistant", `Failed to list traces: ${err.message}`);
+    const msg = `Failed to list traces: ${err.message}`;
+    chatHistory.push({ role: "assistant", content: msg });
+    appendMessage("assistant", msg);
   }
+  saveConversation();
 }
 
 async function slashDelete(id) {
@@ -2077,6 +2127,7 @@ async function slashDelete(id) {
     appendMessage("assistant", "Usage: /delete [id] — provide a numeric trace ID.");
     return;
   }
+  chatHistory.push({ role: "user", content: `/delete ${traceId}` });
   appendMessage("user", `/delete ${traceId}`);
   try {
     const res = await authedFetch(`${CONFIG.apiBase}/api/trace/${traceId}`, { method: "DELETE" });
@@ -2084,10 +2135,15 @@ async function slashDelete(id) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.error || `Server returned ${res.status}`);
     }
-    appendMessage("assistant", `Trace #${traceId} deleted.`);
+    const msg = `Trace #${traceId} deleted.`;
+    chatHistory.push({ role: "assistant", content: msg });
+    appendMessage("assistant", msg);
   } catch (err) {
-    appendMessage("assistant", `Delete failed: ${err.message}`);
+    const msg = `Delete failed: ${err.message}`;
+    chatHistory.push({ role: "assistant", content: msg });
+    appendMessage("assistant", msg);
   }
+  saveConversation();
 }
 
 // ============================================================
@@ -2734,6 +2790,38 @@ async function executeTool(name, args) {
             }
           });
         });
+      }
+
+      case "web_search": {
+        const res = await authedFetch(`${CONFIG.apiBase}/api/web-search`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: args.query })
+        });
+        if (!res.ok) {
+          if (res.status === 503) {
+            return { error: "Web search is not available on this server. The server owner needs to configure a search provider (SEARCH_API_KEY)." };
+          }
+          if (res.status === 429) {
+            try {
+              const errorData = await res.json();
+              if (errorData.code && isRateLimitCode(errorData.code)) {
+                return { result: `Web search limit reached: ${errorData.current}/${errorData.limit} used today. Upgrade to Pro for more searches.` };
+              }
+            } catch (_) {}
+          }
+          return { error: `Web search failed: ${res.status}` };
+        }
+        const data = await res.json();
+        return {
+          query: data.query,
+          answer: data.answer || null,
+          results: (data.results || []).map(r => ({
+            title: r.title,
+            url: r.url,
+            snippet: r.content,
+          }))
+        };
       }
 
       default:

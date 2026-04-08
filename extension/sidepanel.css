@@ -1443,83 +1443,178 @@ body {
 }
 
 /* ============================================================
-   Onboarding
+   Onboarding — Phase A: Welcome Overlay
    ============================================================ */
 
-#onboarding-overlay {
+#onboarding-welcome {
   position: fixed;
   inset: 0;
   z-index: 2000;
-  pointer-events: none;
-}
-
-#onboarding-overlay:not(.hidden) {
-  pointer-events: auto;
-}
-
-#onboarding-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  transition: opacity 0.3s ease;
-}
-
-#onboarding-tooltip {
-  position: absolute;
-  background: var(--bg-secondary);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  padding: 16px;
-  max-width: 260px;
-  box-shadow: 0 8px 32px rgba(242, 112, 89, 0.2);
-  z-index: 2001;
-  pointer-events: auto;
-  animation: onboarding-fade-in 0.3s ease;
-}
-
-@keyframes onboarding-fade-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-#onboarding-text {
-  color: var(--text-primary);
-  font-size: 13px;
-  line-height: 1.5;
-  margin-bottom: 12px;
-}
-
-.onboarding-footer {
+  background: var(--bg-primary);
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
 }
 
-#btn-onboarding-skip {
+#onboarding-welcome.hidden {
+  display: none !important;
+}
+
+.onboarding-welcome-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 300px;
+}
+
+.onboarding-logo {
+  height: 64px;
+  width: auto;
+}
+
+.onboarding-tagline {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin: 0;
+}
+
+.onboarding-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.onboarding-cta {
+  width: 100%;
+  max-width: 240px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.onboarding-skip {
   background: none;
   border: none;
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
   padding: 4px 0;
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: color 0.15s, text-decoration-color 0.15s;
 }
 
-#btn-onboarding-skip:hover {
+.onboarding-skip:hover {
   color: var(--text-secondary);
+  text-decoration-color: var(--text-secondary);
 }
 
-#onboarding-step {
-  color: var(--text-dim);
-  font-size: 11px;
+/* ============================================================
+   Onboarding — Phase B: Static Demo Chat
+   ============================================================ */
+
+#onboarding-demo {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
 }
 
-.onboarding-highlight {
-  position: relative;
-  z-index: 2001 !important;
-  box-shadow: 0 0 0 3px var(--accent), 0 0 12px var(--accent-glow);
-  border-radius: 8px;
+#onboarding-demo.hidden {
+  display: none !important;
+}
+
+.onboarding-demo-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.onboarding-demo-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.onboarding-demo-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Staggered fade-in for demo messages */
+.onboarding-msg-1 { animation: fadeIn 0.4s ease forwards; animation-delay: 0s; opacity: 0; }
+.onboarding-msg-2 { animation: fadeIn 0.4s ease forwards; animation-delay: 0.6s; opacity: 0; }
+.onboarding-msg-3 { animation: fadeIn 0.4s ease forwards; animation-delay: 1.8s; opacity: 0; }
+.onboarding-msg-4 { animation: fadeIn 0.4s ease forwards; animation-delay: 2.8s; opacity: 0; }
+
+/* ============================================================
+   Onboarding — Driver.js Dark Theme Override
+   ============================================================ */
+
+.nt-driver-popover {
+  background: #2a2a2a !important;
+  color: #f5f5f5 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  max-width: 280px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+}
+
+.nt-driver-popover .driver-popover-title {
+  color: #f5f5f5 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+.nt-driver-popover .driver-popover-description {
+  color: #a0a0a0 !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+.nt-driver-popover .driver-popover-progress-text {
+  color: #666666 !important;
+  font-size: 11px !important;
+}
+
+.nt-driver-popover .driver-popover-navigation-btns button {
+  background: #F27059 !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 6px 14px !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+}
+
+.nt-driver-popover .driver-popover-navigation-btns button:hover {
+  background: #D94E8A !important;
+}
+
+.nt-driver-popover .driver-popover-close-btn {
+  color: #a0a0a0 !important;
+}
+
+.nt-driver-popover .driver-popover-close-btn:hover {
+  color: #f5f5f5 !important;
 }
 
 /* ─── Notification Toasts ─── */
